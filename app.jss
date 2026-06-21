@@ -1,374 +1,552 @@
-import {
+const users = [
+  {
+    email: "admin@invoicepro.com",
+    password: "admin123",
+    role: "SUPER_ADMIN"
+  }
+];
 
-  auth,
-  db,
-
-  signInWithEmailAndPassword,
-  createUserWithEmailAndPassword,
-
-  collection,
-  addDoc,
-  getDocs,
-  deleteDoc,
-  doc,
-  updateDoc
-
-} from "./firebase.js";
-
-async function login(){
+function login() {
 
     const email =
-        document.getElementById("email").value;
+        document.getElementById("email")
+        .value
+        .trim();
 
     const password =
-        document.getElementById("password").value;
+        document.getElementById("password")
+        .value
+        .trim();
 
-    try{
+    if (
+        email === "admin@invoicepro.com" &&
+        password === "admin123"
+    ) {
 
-        await signInWithEmailAndPassword(
-            auth,
-            email,
-            password
-        );
-
-        document
-            .getElementById("login")
+        document.getElementById("login")
             .classList.add("hidden");
 
-        document
-            .getElementById("app")
+        document.getElementById("app")
             .classList.remove("hidden");
 
-        showTab("dashboard");
+        loadData();
 
-        loadDashboard();
-
-        alert("Login Successful");
-
-    }
-    catch(error){
-
-        alert(error.message);
-    }
-}
-
-window.login = login;
-
-async function createUser(){
-
-    const email =
-        document.getElementById(
-            "newUserEmail"
-        ).value;
-
-    const password =
-        document.getElementById(
-            "newUserPassword"
-        ).value;
-
-    try{
-
-        await createUserWithEmailAndPassword(
-            auth,
-            email,
-            password
-        );
+    } else {
 
         alert(
-            "User Created Successfully"
+            "Invalid Login\n\nUse:\nadmin@invoicepro.com\nadmin123"
         );
-    }
-    catch(error){
 
-        alert(error.message);
+        console.log("Entered Email:", email);
+        console.log("Entered Password:", password);
     }
 }
 
-window.createUser = createUser;
+function showTab(tabId) {
 
-async function addVendor(){
+    const tabs =
+        document.querySelectorAll(".tab");
 
-    const vendor = {
-
-        name:
-        document.getElementById(
-            "vendorName"
-        ).value,
-
-        country:
-        document.getElementById(
-            "vendorCountry"
-        ).value,
-
-        email:
-        document.getElementById(
-            "vendorEmail"
-        ).value,
-
-        createdAt:
-        new Date()
-            .toISOString()
-    };
-
-    await addDoc(
-
-        collection(
-            db,
-            "vendors"
-        ),
-
-        vendor
-
-    );
-
-    loadVendors();
-
-    loadDashboard();
-
-    alert("Vendor Added");
-}
-
-window.addVendor = addVendor;
-
-async function loadVendors(){
-
-    const snapshot =
-        await getDocs(
-            collection(
-                db,
-                "vendors"
-            )
-        );
-
-    const vendorTable =
-        document.getElementById(
-            "vendorTable"
-        );
-
-    vendorTable.innerHTML = "";
-
-    snapshot.forEach(docData=>{
-
-        const vendor =
-            docData.data();
-
-        vendorTable.innerHTML += `
-        <tr>
-
-            <td>${vendor.name}</td>
-
-            <td>${vendor.country}</td>
-
-            <td>${vendor.email}</td>
-
-        </tr>
-        `;
+    tabs.forEach(tab => {
+        tab.classList.add("hidden");
     });
+
+    const selectedTab =
+        document.getElementById(tabId);
+
+    if (selectedTab) {
+        selectedTab.classList.remove("hidden");
+    }
 }
 
-async function createInvoice(){
+const TAX_RULES = {
+  India: {
+    taxType: "GST",
+    rate: 18
+  },
+  Germany: {
+    taxType: "VAT",
+    rate: 19
+  },
+  UK: {
+    taxType: "VAT",
+    rate: 20
+  },
+  UAE: {
+    taxType: "VAT",
+    rate: 5
+  },
+  Canada: {
+    taxType: "GST/HST",
+    rate: 13
+  }
+};
+
+function getTax(country, amount) {
+  const rule = TAX_RULES[country];
+
+  if (!rule) {
+    return {
+      taxType: "N/A",
+      taxAmount: 0,
+      rate: 0
+    };
+  }
+
+  return {
+    taxType: rule.taxType,
+    rate: rule.rate,
+    taxAmount: amount * rule.rate / 100
+  };
+}
+
+let vendors =
+  JSON.parse(localStorage.getItem("vendors")) || [];
+
+function addVendor() {
+
+  const vendor = {
+    id: Date.now(),
+    name: vendorName.value,
+    country: vendorCountry.value,
+    email: vendorEmail.value
+  };
+
+  vendors.push(vendor);
+
+  localStorage.setItem(
+    "vendors",
+    JSON.stringify(vendors)
+  );
+
+  renderVendors();
+  
+  loadDashboard();
+}
+
+function renderVendors() {
+
+  vendorTable.innerHTML = "";
+
+  vendors.forEach(vendor => {
+
+    vendorTable.innerHTML += `
+      <tr>
+        <td>${vendor.name}</td>
+        <td>${vendor.country}</td>
+        <td>${vendor.email}</td>
+      </tr>
+    `;
+  });
+}
+
+let invoices =
+  JSON.parse(localStorage.getItem("invoices")) || [];
+
+function createInvoice() {
 
     const customer =
-        document.getElementById(
-            "customer"
-        ).value;
+        document.getElementById("customer").value.trim();
 
     const country =
-        document.getElementById(
-            "country"
-        ).value;
+        document.getElementById("country").value;
 
     const amount =
-        Number(
-            document.getElementById(
-                "amount"
-            ).value
-        );
+        parseFloat(
+            document.getElementById("amount").value
+        ) || 0;
 
-    const taxRate =
-        taxes[country] || 0;
+    if (!customer) {
+        alert("Enter customer name");
+        return;
+    }
+
+    if (amount <= 0) {
+        alert("Enter valid amount");
+        return;
+    }
+
+    const rate =
+    TAX_RULES[country]
+        ? TAX_RULES[country].rate
+        : 0;
 
     const taxAmount =
-        amount * taxRate / 100;
+        amount * rate / 100;
 
     const total =
         amount + taxAmount;
 
     const invoice = {
-
         invoiceNo:
-        "INV-" + Date.now(),
+            "INV-" + Date.now(),
 
         customer,
-
         country,
-
         amount,
-
         taxAmount,
-
         total,
-
-        status:
-        "PENDING",
-
-        createdBy:
-        auth.currentUser.email,
-
-        createdDate:
-        new Date()
-            .toISOString()
+        status: "PENDING"
     };
 
-    await addDoc(
+    invoices.push(invoice);
 
-        collection(
-            db,
-            "invoices"
-        ),
-
-        invoice
-
+    localStorage.setItem(
+        "invoices",
+        JSON.stringify(invoices)
     );
 
-    loadInvoices();
+    generatePDF(invoice);
+
+    logActivity("Invoice Generated");
+
+    loadData();
+
+    alert(
+        "Invoice Created: " +
+        invoice.invoiceNo
+    );
+}
+
+function calculateTax() {
+
+    const amount =
+        parseFloat(
+            document.getElementById("amount").value
+        ) || 0;
+
+    const country =
+        document.getElementById("country").value;
+
+    const rate =
+        TAX_RULES[country]
+            ? TAX_RULES[country].rate
+            : 0;
+
+    const taxAmount =
+        amount * rate / 100;
+
+    const total =
+        amount + taxAmount;
+
+    document.getElementById(
+        "taxInfo"
+    ).innerText =
+        rate + "% (" +
+        taxAmount.toFixed(2) +
+        ")";
+
+    document.getElementById(
+        "totalInfo"
+    ).innerText =
+        total.toFixed(2);
+}
+
+function loadData(){
+
+    renderVendors();
 
     loadDashboard();
 
-    generatePDF(invoice);
+    renderActivities();
+
+    loadPieChart();
 }
 
-window.createInvoice = createInvoice;
+function loadDashboard() {
 
-async function loadInvoices(){
+  const totalInvoices =
+    invoices.length;
 
-    const snapshot =
-        await getDocs(
-            collection(
-                db,
-                "invoices"
-            )
-        );
+  const revenue =
+    invoices.reduce(
+      (sum, invoice) =>
+        sum + invoice.total,
+      0
+    );
 
-    const invoiceTable =
-        document.getElementById(
-            "invoiceTable"
-        );
-
-    invoiceTable.innerHTML = "";
-
-    snapshot.forEach(docData=>{
-
-        const invoice =
-            docData.data();
-
-        invoiceTable.innerHTML += `
+document.getElementById("vendorCount").innerText =
+    vendors.length;
+document.getElementById("invoiceTable").innerHTML =
+    invoices.map(i => `
         <tr>
-
-            <td>${invoice.invoiceNo}</td>
-
-            <td>${invoice.customer}</td>
-
-            <td>${invoice.country}</td>
-
-            <td>${invoice.total}</td>
-
-            <td>${invoice.status}</td>
-
+            <td>${i.invoiceNo}</td>
+            <td>${i.customer}</td>
+            <td>${i.country}</td>
+            <td>${i.total.toFixed(2)}</td>
         </tr>
-        `;
+    `).join("");
+
+  const totalTax =
+    invoices.reduce(
+      (sum, invoice) =>
+        sum + invoice.taxAmount,
+      0
+    );
+
+  document.getElementById(
+    "invoiceCount"
+  ).innerText = totalInvoices;
+
+  document.getElementById(
+    "revenue"
+  ).innerText =
+    revenue.toFixed(2);
+
+  document.getElementById(
+    "taxTotal"
+  ).innerText =
+    totalTax.toFixed(2);
+}
+
+let activities =
+  JSON.parse(
+    localStorage.getItem("activities")
+  ) || [];
+
+function logActivity(message) {
+
+  activities.push({
+    timestamp: new Date().toLocaleString(),
+    message
+  });
+
+  localStorage.setItem(
+    "activities",
+    JSON.stringify(activities)
+  );
+}
+
+function renderActivities(){
+
+    const activityLog =
+        document.getElementById(
+            "activityLog"
+        );
+
+    if(!activityLog) return;
+
+    activityLog.innerHTML = "";
+
+    activities.forEach(a=>{
+
+        activityLog.innerHTML +=
+        `<li>
+            ${a.timestamp} - ${a.message}
+        </li>`;
     });
 }
 
-async function loadDashboard(){
+function markPaid(invoiceNo) {
 
-    const vendorSnapshot =
-        await getDocs(
-            collection(
-                db,
-                "vendors"
-            )
-        );
+  const invoice =
+    invoices.find(
+      i => i.invoiceNo === invoiceNo
+    );
 
-    const invoiceSnapshot =
-        await getDocs(
-            collection(
-                db,
-                "invoices"
-            )
-        );
+  if (invoice) {
 
-    let revenue = 0;
+    invoice.status = "Paid";
 
-    invoiceSnapshot.forEach(docData=>{
+    localStorage.setItem(
+      "invoices",
+      JSON.stringify(invoices)
+    );
 
-        revenue +=
-            docData.data().total;
-    });
-
-    document.getElementById(
-        "vendorCount"
-    ).innerText =
-        vendorSnapshot.size;
-
-    document.getElementById(
-        "invoiceCount"
-    ).innerText =
-        invoiceSnapshot.size;
-
-    document.getElementById(
-        "revenue"
-    ).innerText =
-        revenue.toFixed(2);
+    renderInvoices();
+  }
 }
 
-import { initializeApp } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-app.js";
+function loadPieChart() {
 
-import {
-  getAuth,
-  signInWithEmailAndPassword,
-  createUserWithEmailAndPassword,
-  signOut
-} from "https://www.gstatic.com/firebasejs/11.9.1/firebase-auth.js";
+  const paid =
+    invoices.filter(
+      i => i.status === "Paid"
+    ).length;
 
-import {
-  getFirestore,
-  collection,
-  addDoc,
-  getDocs,
-  deleteDoc,
-  doc,
-  updateDoc
-} from "https://www.gstatic.com/firebasejs/11.9.1/firebase-firestore.js";
+  const pending =
+    invoices.filter(
+      i => i.status === "Pending"
+    ).length;
 
-const firebaseConfig = {
-  apiKey: "AIzaSyBXjnoLyw93isnQZk1C5BZvT2o_kz6tLqg",
-  authDomain: "invoicing-app-7b347.firebaseapp.com",
-  projectId: "invoicing-app-7b347",
-  storageBucket: "invoicing-app-7b347.firebasestorage.app",
-  messagingSenderId: "52010588221",
-  appId: "1:52010588221:web:2d70b34e48ce8e45d53254",
-  measurementId: "G-8DP3RJVK54"
-};
+  const overdue =
+    invoices.filter(
+      i => i.status === "Overdue"
+    ).length;
 
-const app = initializeApp(firebaseConfig);
+  new Chart(
+    document.getElementById("pieChart"),
+    {
+      type: "pie",
+      data: {
+        labels: [
+          "Paid",
+          "Pending",
+          "Overdue"
+        ],
+        datasets: [{
+          data: [
+            paid,
+            pending,
+            overdue
+          ]
+        }]
+      }
+    }
+  );
+}
 
-const auth = getAuth(app);
+function renderVendors(){
 
-const db = getFirestore(app);
+    vendorTable.innerHTML = "";
 
-export {
-  auth,
-  db,
+    vendors.forEach(vendor => {
 
-  signInWithEmailAndPassword,
-  createUserWithEmailAndPassword,
-  signOut,
+        vendorTable.innerHTML += `
+        <tr>
+            <td>${vendor.name}</td>
+            <td>${vendor.country}</td>
+            <td>${vendor.email}</td>
+            <td>${vendor.dueAmount}</td>
 
-  collection,
-  addDoc,
-  getDocs,
-  deleteDoc,
-  doc,
-  updateDoc
-};
+            <td>
+                <button onclick="editVendor(${vendor.id})">
+                    Edit
+                </button>
+
+                <button onclick="deleteVendor(${vendor.id})">
+                    Delete
+                </button>
+            </td>
+        </tr>`;
+    });
+}
+
+function recordPayment(
+    invoiceNo,
+    amountPaid
+){
+
+    const invoice =
+        invoices.find(
+            i => i.invoiceNo === invoiceNo
+        );
+
+    if(!invoice) return;
+
+    invoice.paidAmount += amountPaid;
+
+    invoice.dueAmount =
+        invoice.amount -
+        invoice.paidAmount;
+
+    if(invoice.dueAmount <= 0){
+
+        invoice.status = "PAID";
+
+        generatePaymentReceipt(
+            invoice
+        );
+
+    }else{
+
+        invoice.status =
+            "PARTIAL";
+    }
+
+    localStorage.setItem(
+        "invoices",
+        JSON.stringify(invoices)
+    );
+}
+
+function generatePaymentReceipt(
+    invoice
+){
+
+    const receipt = {
+
+        receiptNo:
+            "REC-" + Date.now(),
+
+        invoiceNo:
+            invoice.invoiceNo,
+
+        customer:
+            invoice.customer,
+
+        amountPaid:
+            invoice.paidAmount,
+
+        paymentDate:
+            new Date()
+                .toLocaleDateString()
+    };
+
+    console.log(
+        "Receipt Generated",
+        receipt
+    );
+}
+
+function generatePDF(invoice) {
+
+    const { jsPDF } = window.jspdf;
+
+    const doc = new jsPDF();
+
+    doc.setFontSize(20);
+    doc.text("INVOICE", 20, 20);
+
+    doc.setFontSize(12);
+
+    doc.text(
+        "Invoice No: " +
+        invoice.invoiceNo,
+        20,
+        40
+    );
+
+    doc.text(
+        "Customer: " +
+        invoice.customer,
+        20,
+        50
+    );
+
+    doc.text(
+        "Country: " +
+        invoice.country,
+        20,
+        60
+    );
+
+    doc.text(
+        "Amount: " +
+        invoice.amount,
+        20,
+        70
+    );
+
+    doc.text(
+        "Tax: " +
+        invoice.taxAmount,
+        20,
+        80
+    );
+
+    doc.text(
+        "Total: " +
+        invoice.total,
+        20,
+        90
+    );
+
+    doc.save(
+        invoice.invoiceNo + ".pdf"
+    );
+}
+
+console.log(typeof login);
+
+console.log("APP JS LOADED SUCCESSFULLY");
