@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>In-wise</title>
+<link rel="stylesheet" href="style.css">
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<body>
+<div class="login" id="login">
+<h2>In-wise</h2>
+  
+<input id="email" placeholder="Email">
+<input id="password" type="password" placeholder="Password">
+
+<button onclick="login()">
+  Login
+</button>
+</div>
+
+<div id="app" class="hidden">
+  
+<header>
+    <h1>In-wise</h1>
+</header>
+
+<nav>
+<button onclick="showTab('dashboard')">Dashboard</button>
+<button onclick="showTab('vendors')">Vendors</button>
+<button onclick="showTab('activities')">Activities</button>
+<button onclick="showTab('invoices')">Invoices</button>
+<button onclick="showTab('payments')">Payments</button>
+<button onclick="showTab('settings')">Settings</button>
+  <button onclick="showTab('users')">
+    Users
+    </nav>
+
+<section id="dashboard" class="tab">
+<h2>Dashboard</h2>
+<div class="cards">
+<div class="card"><h3 id="vendorCount">0</h3><p>Vendors</p></div>
+<div class="card"><h3 id="invoiceCount">0</h3><p>Invoices</p></div>
+<div class="card"><h3 id="revenue">0</h3><p>Revenue</p></div>
+<div class="card"><h3 id="taxTotal">0</h3><p>Total Tax</p>
+</div>
+</div>
+<canvas id="pieChart"></canvas>
+</section>
+
+<section id="vendors" class="tab hidden">
+<h2>Vendors</h2>
+<input id="vendorName" placeholder="Vendor Name">
+<input id="vendorCountry" placeholder="Country">
+<input id="vendorEmail" placeholder="Email">
+<button onclick="addVendor()">Add Vendor</button>
+<table><tbody id="vendorTable"></tbody></table>
+</section>
+  
+<section id="activities" class="tab hidden">
+<h2>Activities</h2>
+<ul id="activityLog"></ul>
+</section>
+
+<section id="invoices" class="tab hidden">
+<h2>Create Invoice</h2>
+<input id="customer" placeholder="Customer">
+<select id="country" onchange="calculateTax()">
+<option>India</option>
+<option>Germany</option>
+<option>UK</option>
+<option>UAE</option>
+<option>Canada</option>
+</select>
+<input id="amount" type="number" placeholder="Amount" oninput="calculateTax()">
+<p>Tax: <span id="taxInfo">0%</span></p>
+<p>Total: <span id="totalInfo">0</span></p>
+<button onclick="createInvoice()">Generate Invoice</button>
+<table>
+    <thead>
+        <tr>
+            <th>Invoice No</th>
+            <th>Customer</th>
+            <th>Country</th>
+            <th>Total</th>
+        </tr>
+    </thead>
+    <tbody id="invoiceTable"></tbody>
+
+</table>
+
+  </section>
+  
+<section id="payments" class="tab hidden">
+<h2>Payments</h2>
+<p>Stripe, PayPal, Razorpay integration placeholder.</p>
+</section>
+
+<section id="settings" class="tab hidden">
+<h2>Settings</h2>
+<p>Admin Settings, Email Templates, Branding.</p>
+</section>
+  
+  <section id="users" class="tab hidden">
+
+<h2>User Management</h2>
+
+<input id="newUserEmail" placeholder="Email">
+
+<input id="newUserPassword" placeholder="Password">
+
+<select id="newUserRole">
+    <option>SUPER_ADMIN</option>
+    <option>VENDOR_ADMIN</option>
+    <option>VIEWER</option>
+</select>
+
+<button onclick="createUser()">
+    Create User
+</button>
+
+<table>
+    <tbody id="userTable"></tbody>
+</table>
+
+</section>
+  
+</div>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
